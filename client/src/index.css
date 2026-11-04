@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    /* A bright sky the floating board hangs in. */
+    background: radial-gradient(120% 90% at 50% 0%, #e9f6ff 0%, #c7e4ff 45%, #b9c8ff 100%) fixed;
+    color: #1e293b;
+    font-family: Nunito, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.3);
+    border-radius: 999px;
+  }
+
+  canvas {
+    touch-action: none;
+    display: block;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply border-2 border-white bg-white/90 backdrop-blur-md;
+  }
+
+  .glass-strong {
+    @apply border-2 border-white bg-white;
+  }
+
+  .panel {
+    @apply glass rounded-3xl shadow-glass;
+  }
+
+  /* Chunky casual-game buttons: a solid under-shadow that presses in. */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-2xl px-4 py-2.5
+      font-display text-sm font-semibold tracking-wide transition-all duration-100
+      active:translate-y-[3px] disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-b from-sky-400 to-sky-600 text-white;
+    box-shadow: 0 4px 0 #0369a1, 0 8px 18px -6px rgba(3, 105, 161, 0.55);
+  }
+  .btn-primary:active {
+    box-shadow: 0 1px 0 #0369a1;
+  }
+
+  .btn-ghost {
+    @apply btn border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+    box-shadow: 0 3px 0 #cbd5e1;
+  }
+  .btn-ghost:active {
+    box-shadow: 0 0 0 #cbd5e1;
+  }
+
+  .btn-danger {
+    @apply btn bg-gradient-to-b from-rose-400 to-rose-600 text-white;
+    box-shadow: 0 4px 0 #9f1239;
+  }
+  .btn-danger:active {
+    box-shadow: 0 1px 0 #9f1239;
+  }
+
+  .btn-gold {
+    @apply btn bg-gradient-to-b from-amber-300 to-amber-500 text-amber-950;
+    box-shadow: 0 4px 0 #b45309, 0 8px 18px -6px rgba(180, 83, 9, 0.5);
+  }
+  .btn-gold:active {
+    box-shadow: 0 1px 0 #b45309;
+  }
+
+  .field {
+    @apply w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-base font-semibold
+      text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400
+      focus:border-sky-400 focus:ring-4 focus:ring-sky-200;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100
+      px-2.5 py-1 text-[11px] font-bold text-slate-600;
+  }
+
+  .label {
+    @apply font-display text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+  }
+
+  /* Round icon buttons down the side of the table. */
+  .icon-btn {
+    @apply flex h-9 w-9 items-center justify-center rounded-xl border-2 border-white bg-white/90 sm:h-11 sm:w-11 sm:rounded-2xl
+      text-slate-600 backdrop-blur transition hover:text-sky-600 active:translate-y-[2px];
+    box-shadow: 0 3px 0 rgba(15, 23, 42, 0.12), 0 8px 16px -8px rgba(15, 23, 42, 0.35);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .text-stroke {
+    -webkit-text-stroke: 1px rgba(15, 23, 42, 0.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
