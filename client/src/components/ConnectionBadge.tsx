@@ -14,10 +14,10 @@ export function ConnectionBadge({ className }: { className?: string }) {
   if (LOCAL_MODE) {
     return (
       <span
-        className={cx('chip border-emerald-400/30 text-emerald-700', className)}
+        className={cx('chip border-emerald-300 bg-emerald-50 text-emerald-800', className)}
         title="The game runs entirely in this browser tab"
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="h-2 w-2 rounded-full bg-emerald-500" />
         In your browser
       </span>
     );
@@ -27,14 +27,14 @@ export function ConnectionBadge({ className }: { className?: string }) {
     <span
       className={cx(
         'chip',
-        good ? 'border-emerald-400/30 text-emerald-700' : 'border-amber-400/30 text-amber-700',
+        good ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-amber-300 bg-amber-50 text-amber-800',
         className,
       )}
       title={good ? 'Live connection to the game server' : 'Trying to reach the game server'}
     >
       <span
         className={cx(
-          'h-1.5 w-1.5 rounded-full',
+          'h-2 w-2 rounded-full',
           good ? 'bg-emerald-400' : 'animate-pulse bg-amber-400',
         )}
       />

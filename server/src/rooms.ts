@@ -12,6 +12,7 @@ import type {
   JoinResult,
   ServerToClientEvents,
 } from './shared';
+import { presentationMs } from './shared';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -162,8 +163,10 @@ export class RoomManager {
   private broadcast(room: Room): void {
     room.dirty = true;
     room.lastActivity = Date.now();
-    room.botReadyAt = Date.now() + BOT_THINK_MS;
     const events = room.game.drainEvents();
+    // Bots wait for the dice and the walk on screen to finish, then think.
+    // A later, quieter broadcast never cuts an animation's wait short.
+    room.botReadyAt = Math.max(room.botReadyAt, Date.now() + presentationMs(events) + BOT_THINK_MS);
     // Events first: the client turns move events into walks before the new
     // positions arrive, so pieces travel instead of snapping into place.
     if (events.length > 0) this.io.to(room.code).emit('events', events);

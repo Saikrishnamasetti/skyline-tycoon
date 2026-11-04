@@ -51,12 +51,18 @@ function SideButton({
   return (
     <button
       type="button"
-      title={label}
       aria-label={label}
       onClick={onClick}
-      className={cx('icon-btn', active && 'text-sky-600 ring-2 ring-sky-300')}
+      className={cx('icon-btn group relative', active && 'text-sky-600 ring-2 ring-sky-300')}
     >
       {children}
+      {/* The name slides out on hover or keyboard focus. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-full mr-2.5 translate-x-2 whitespace-nowrap rounded-xl bg-slate-900/90 px-3 py-1.5 font-display text-sm font-semibold text-white opacity-0 shadow-lg transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -126,8 +132,8 @@ export function GameTable({ state, me, onLeave }: GameTableProps) {
       {contextLost && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-6 backdrop-blur-sm">
           <div className="panel max-w-sm p-5 text-center">
-            <h2 className="font-display text-lg font-semibold text-slate-900">The 3D board needs a reload</h2>
-            <p className="mt-1.5 text-[13px] text-slate-600">
+            <h2 className="font-display text-xl font-semibold text-slate-900">The 3D board needs a reload</h2>
+            <p className="mt-2 text-base leading-relaxed text-slate-600">
               Your browser released the graphics card, usually after a long spell in the background. Your seat is
               safe - reloading picks the game up exactly where it is.
             </p>
@@ -142,7 +148,7 @@ export function GameTable({ state, me, onLeave }: GameTableProps) {
       <div className="pointer-events-none absolute inset-0 hidden sm:block">
         {seated.map((player, seat) => (
           <div key={player.id} className={cx('absolute', CORNER_CLASS[CORNERS[seat % 4]])}>
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <PlayerBadge
                 state={state}
                 player={player}
@@ -151,7 +157,7 @@ export function GameTable({ state, me, onLeave }: GameTableProps) {
                 onClick={() => player.id === me?.id && setPortfolio(true)}
               />
             </div>
-            <div className="lg:hidden">
+            <div className="xl:hidden">
               <PlayerBadge
                 state={state}
                 player={player}
@@ -165,19 +171,19 @@ export function GameTable({ state, me, onLeave }: GameTableProps) {
         ))}
       </div>
       {/* Phones: one compact row under the timer instead. */}
-      <div className="pointer-events-none absolute inset-x-0 top-16 flex flex-wrap justify-center gap-2 px-3 sm:hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-[4.25rem] flex flex-wrap justify-center gap-2 px-3 sm:hidden">
         {seated.map((player) => (
-          <PlayerBadge key={player.id} state={state} player={player} corner="tl" isMe={player.id === me?.id} compact />
+          <PlayerBadge key={player.id} state={state} player={player} corner="tl" isMe={player.id === me?.id} mini />
         ))}
       </div>
 
       {/* Timer pill, top centre. */}
       <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center sm:top-4">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full border-2 border-white bg-white/95 px-3 py-1.5 shadow-glass">
-          <span className="font-display text-[12px] font-semibold tracking-[0.16em] text-sky-600">{state.roomCode}</span>
+        <div className="pointer-events-auto flex items-center gap-2.5 rounded-full border-2 border-white bg-white/95 px-4 py-1.5 shadow-glass">
+          <span className="font-display text-sm font-semibold tracking-[0.16em] text-sky-600">{state.roomCode}</span>
           <MatchClock state={state} />
           {current && state.status === 'playing' && (
-            <span className="hidden font-display text-[13px] font-semibold text-slate-700 md:inline">
+            <span className="hidden font-display text-base font-semibold text-slate-700 md:inline">
               {current.id === me?.id ? 'Your turn' : `${current.name}'s turn`}
             </span>
           )}
@@ -207,14 +213,14 @@ export function GameTable({ state, me, onLeave }: GameTableProps) {
       </div>
 
       {logOpen && (
-        <div className="absolute right-16 top-1/2 z-10 w-72 -translate-y-1/2 sm:right-20">
-          <LogPanel state={state} className="max-h-[48vh]" />
+        <div className="absolute right-[4.25rem] top-1/2 z-10 w-[min(22rem,calc(100vw-5.5rem))] -translate-y-1/2 sm:right-[5.25rem]">
+          <LogPanel state={state} className="max-h-[52vh]" />
         </div>
       )}
 
       {/* The action panel, bottom centre between the lower seats. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3 safe-bottom sm:px-44 sm:pb-4 lg:px-72">
-        <div className="pointer-events-auto w-full max-w-2xl space-y-2">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3 safe-bottom sm:px-44 sm:pb-4 lg:px-56 xl:px-72">
+        <div className="pointer-events-auto w-full max-w-3xl space-y-2">
           <TradeInbox state={state} me={me} />
           <ActionBar state={state} me={me} onOpenPortfolio={() => setPortfolio(true)} onOpenTrade={() => setTrade(true)} />
         </div>

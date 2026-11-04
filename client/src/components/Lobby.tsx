@@ -20,21 +20,21 @@ interface LobbyProps {
 function SeatRow({ player, state, meId }: { player: Player; state: GameState; meId?: string }) {
   const isHost = meId === state.hostId;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-      <Avatar player={player} size={38} />
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3">
+      <Avatar player={player} size={48} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-display text-sm font-semibold text-slate-900">
+        <div className="flex items-center gap-2">
+          <span className="truncate font-display text-lg font-semibold text-slate-900">
             {player.name}
           </span>
           {player.id === state.hostId && (
-            <span className="chip border-amber-400/30 px-1.5 py-0 text-[9px] text-amber-700">
+            <span className="chip border-amber-300 bg-amber-50 px-2 py-0 text-xs text-amber-800">
               Host
             </span>
           )}
-          {player.id === meId && <span className="chip px-1.5 py-0 text-[9px]">You</span>}
+          {player.id === meId && <span className="chip px-2 py-0 text-xs">You</span>}
         </div>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-sm text-slate-500">
           {PLAYER_COLORS.find((c) => c.id === player.color)?.label} &middot;{' '}
           {TOKEN_SHAPES.find((t) => t.id === player.token)?.label}
         </span>
@@ -42,7 +42,7 @@ function SeatRow({ player, state, meId }: { player: Player; state: GameState; me
       {player.isBot && isHost && (
         <button
           type="button"
-          className="rounded-lg px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-rose-700"
+          className="min-h-[2.25rem] rounded-xl px-3 py-1 text-sm font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300"
           onClick={() => void api.removeBot(player.id)}
           aria-label={`Remove ${player.name}`}
         >
@@ -50,9 +50,9 @@ function SeatRow({ player, state, meId }: { player: Player; state: GameState; me
         </button>
       )}
       {!player.connected ? (
-        <span className="chip border-amber-400/30 text-amber-700">Away</span>
+        <span className="chip border-amber-300 bg-amber-50 text-amber-800">Away</span>
       ) : player.ready || player.id === state.hostId ? (
-        <span className="chip border-emerald-400/30 text-emerald-700">Ready</span>
+        <span className="chip border-emerald-300 bg-emerald-50 text-emerald-800">Ready</span>
       ) : (
         <span className="chip">Not ready</span>
       )}
@@ -102,29 +102,21 @@ function ShareCard({ state }: { state: GameState }) {
     <div className="panel p-4">
       <span className="label">Share this code</span>
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <div className="rounded-2xl border border-neon-cyan/25 bg-neon-cyan/8 px-5 py-3">
-          <span className="select-all font-mono text-3xl font-bold tracking-[0.32em] text-neon-cyan">
+        <div className="rounded-2xl border-2 border-sky-200 bg-sky-50 px-5 py-3">
+          <span className="select-all font-mono text-4xl font-bold tracking-[0.32em] text-sky-600">
             {state.roomCode}
           </span>
         </div>
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            className="btn-ghost px-3 py-1.5 text-[12px]"
-            onClick={() => void copy('code')}
-          >
+          <button type="button" className="btn-ghost btn-sm" onClick={() => void copy('code')}>
             {copied === 'code' ? 'Copied' : 'Copy room code'}
           </button>
-          <button
-            type="button"
-            className="btn-ghost px-3 py-1.5 text-[12px]"
-            onClick={() => void share()}
-          >
+          <button type="button" className="btn-ghost btn-sm" onClick={() => void share()}>
             {copied === 'link' ? 'Link copied' : 'Invite friends'}
           </button>
         </div>
       </div>
-      <p className="mt-2 break-all text-[11px] text-slate-500">{inviteUrl}</p>
+      <p className="mt-3 break-all text-sm text-slate-500">{inviteUrl}</p>
     </div>
   );
 }
@@ -148,35 +140,31 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
   const emptySeats = Math.max(0, state.settings.maxPlayers - state.players.length);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Room lobby</h1>
-          <p className="text-[12.5px] text-slate-500">
+          <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">Room lobby</h1>
+          <p className="text-base text-slate-600">
             {state.players.length} of {state.settings.maxPlayers} seats filled
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ConnectionBadge />
-          <button
-            type="button"
-            className="btn-ghost px-3 py-1.5 text-[12px]"
-            onClick={() => setRules(true)}
-          >
+          <button type="button" className="btn-ghost btn-sm" onClick={() => setRules(true)}>
             Rules
           </button>
-          <button type="button" className="btn-ghost px-3 py-1.5 text-[12px]" onClick={onLeave}>
+          <button type="button" className="btn-ghost btn-sm" onClick={onLeave}>
             Leave
           </button>
         </div>
       </header>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
         <div className="space-y-4">
           {LOCAL_MODE ? (
-            <div className="panel p-4">
+            <div className="panel p-5">
               <span className="label">Playing on this device</span>
-              <p className="mt-2 text-[12.5px] leading-relaxed text-slate-600">
+              <p className="mt-2 text-base leading-relaxed text-slate-600">
                 This edition runs in your browser, so your rivals are bots. Add one to three of
                 them below, then start the game. A refresh mid-game picks up where you left off.
               </p>
@@ -184,23 +172,23 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
           ) : (
             <ShareCard state={state} />
           )}
-          <div className="panel p-4">
+          <div className="panel p-5">
             <span className="label">At the table</span>
-            <div className="mt-2 space-y-2">
+            <div className="mt-3 space-y-2.5">
               {state.players.map((player) => (
                 <SeatRow key={player.id} player={player} state={state} meId={me?.id} />
               ))}
               {Array.from({ length: emptySeats }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
-                  className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-3 py-3 text-[12px] text-slate-400"
+                  className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-3 text-base text-slate-500"
                 >
-                  <span className="h-9 w-9 rounded-xl border border-dashed border-slate-200" />
+                  <span className="h-12 w-12 rounded-xl border-2 border-dashed border-slate-200" />
                   <span className="flex-1">
                     {LOCAL_MODE ? 'Empty seat' : 'Waiting for another tycoon'}
                   </span>
                   {isHost && i === 0 && (
-                    <button type="button" className="btn-ghost px-3 py-1.5 text-[12px]" onClick={() => void api.addBot()}>
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => void api.addBot()}>
                       Add a bot
                     </button>
                   )}
@@ -211,9 +199,9 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="panel p-4">
+          <div className="panel p-5">
             <span className="label">Your look</span>
-            <div className="mt-2">
+            <div className="mt-3">
               <IdentityPicker
                 value={identity}
                 takenColors={takenColors}
@@ -223,10 +211,10 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
             </div>
           </div>
 
-          <div className="panel p-4">
+          <div className="panel p-5">
             <div className="flex items-center justify-between">
               <span className="label">Table setup</span>
-              {!isHost && <span className="text-[11px] text-slate-500">Host controls these</span>}
+              {!isHost && <span className="text-sm text-slate-500">Host controls these</span>}
             </div>
             <div className="mt-3">
               <RoomSettingsForm
@@ -239,11 +227,12 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
         </div>
       </div>
 
-      <div className="sticky bottom-3 mt-5">
-        <div className="panel flex flex-wrap items-center gap-3 px-4 py-3">
+      {/* Stays in reach while scrolling; a solid surface so nothing shows through. */}
+      <div className="sticky bottom-3 z-10 mt-6">
+        <div className="glass-strong flex flex-wrap items-center gap-3 rounded-3xl px-5 py-3.5 shadow-[0_4px_0_rgba(15,23,42,0.06),0_18px_40px_-12px_rgba(30,41,59,0.45)]">
           {isHost ? (
             <>
-              <span className="flex-1 text-[12.5px] text-slate-500">
+              <span className="flex-1 text-base text-slate-600">
                 {state.players.length < 2
                   ? LOCAL_MODE
                     ? 'Add at least one bot to start.'
@@ -254,7 +243,7 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
               </span>
               <button
                 type="button"
-                className={cx('btn-primary px-6', canStart && 'animate-pulse-ring')}
+                className={cx('btn-primary px-8 text-lg', canStart && 'animate-pulse-ring')}
                 disabled={!canStart}
                 onClick={() => void api.startGame()}
               >
@@ -263,12 +252,12 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
             </>
           ) : (
             <>
-              <span className="flex-1 text-[12.5px] text-slate-500">
+              <span className="flex-1 text-base text-slate-600">
                 Mark yourself ready and the host can start.
               </span>
               <button
                 type="button"
-                className={me?.ready ? 'btn-ghost px-6' : 'btn-primary px-6'}
+                className={me?.ready ? 'btn-ghost px-8 text-lg' : 'btn-primary px-8 text-lg'}
                 onClick={() => void api.setReady(!me?.ready)}
               >
                 {me?.ready ? 'Not ready' : 'I am ready'}

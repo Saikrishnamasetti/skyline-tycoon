@@ -72,15 +72,16 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export function HowToPlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal open={open} onClose={onClose} wide title="How to play">
-      <div className="space-y-5">
+      {/* Two columns on wide screens keep each line a comfortable length. */}
+      <div className="gap-8 md:columns-2">
         {SECTIONS.map((section) => (
-          <section key={section.title}>
-            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-neon-cyan">
+          <section key={section.title} className="mb-6 break-inside-avoid">
+            <h3 className="font-display text-base font-bold uppercase tracking-wider text-sky-600">
               {section.title}
             </h3>
-            <div className="mt-1.5 space-y-1.5">
+            <div className="mt-2 space-y-2">
               {section.body.map((line) => (
-                <p key={line} className="text-[13px] leading-relaxed text-slate-700">
+                <p key={line} className="text-base leading-relaxed text-slate-700">
                   {line}
                 </p>
               ))}

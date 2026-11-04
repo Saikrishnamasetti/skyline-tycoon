@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { DICE_SETTLE_MS, DICE_TUMBLE_MS } from '@shared';
 import { DIE_FACE_VALUES, DIE_REST_ROTATION, dieFaceTexture } from '../lib/textures';
 
 interface DiceProps {
@@ -10,8 +11,9 @@ interface DiceProps {
   visible: boolean;
 }
 
-const TUMBLE_MS = 950;
-const SETTLE_MS = 420;
+// Shared with the server, which holds bots back until the roll has shown.
+const TUMBLE_MS = DICE_TUMBLE_MS;
+const SETTLE_MS = DICE_SETTLE_MS;
 
 function Die({
   value,

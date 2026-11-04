@@ -11,6 +11,10 @@ import { Token } from './Token';
 import { Buildings } from './Buildings';
 import { Dice } from './Dice';
 import type { DiceAnim, TokenTarget } from '../store/useGame';
+import { sfx } from '../lib/audio';
+
+/** A tap per space walked. The audio module stays quiet when sound is off. */
+const playStep = () => sfx.step();
 
 interface BoardProps {
   state: GameState;
@@ -101,6 +105,7 @@ export function Board({ state, tokens, dice, selectedTile, selectable, onSelectT
             player={player}
             target={target}
             isCurrent={player.id === currentPlayerId}
+            onStep={playStep}
           />
         );
       })}

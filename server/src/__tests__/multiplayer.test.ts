@@ -224,10 +224,11 @@ describe('bots in a room', () => {
     }
     await waitFor(
       () => host.state!.log.some((entry) => entry.playerId === bot.id && entry.kind === 'roll'),
-      8000,
+      // Bots wait for the dice and the walk to finish on screen first.
+      12_000,
       'the bot to roll',
     );
-  }, 15_000);
+  }, 20_000);
 });
 
 describe('reconnection', () => {

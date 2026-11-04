@@ -12,8 +12,8 @@ export function MatchClock({ state }: { state: GameState }) {
   return (
     <span
       className={cx(
-        'panel px-2.5 py-1.5 font-mono text-[12px] font-semibold',
-        left <= 60 ? 'text-neon-rose' : 'text-slate-800',
+        'rounded-full bg-slate-100 px-3 py-1 font-mono text-sm font-bold tabular-nums',
+        left <= 60 ? 'text-rose-600' : 'text-slate-800',
       )}
       title="When the clock runs out, the richest tycoon wins"
     >

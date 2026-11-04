@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import type { Variants } from 'motion/react';
 import { DEFAULT_SETTINGS, formatCompact } from '@shared';
 import type { GameSettings, Identity } from '@shared';
 import { PreviewScene } from '../three/PreviewScene';
@@ -14,6 +16,16 @@ import { primeAudio } from '../lib/audio';
 import { useGame } from '../store/useGame';
 
 type Dialog = 'none' | 'create' | 'join' | 'rules';
+
+/** The hero arrives line by line. */
+const hero: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+const rise: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 26 } },
+};
 
 export function Landing() {
   const navigate = useNavigate();
@@ -66,54 +78,56 @@ export function Landing() {
       </div>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/80 via-white/35 to-transparent" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6 sm:px-10">
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-neon-cyan to-neon-violet font-display text-sm font-bold text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-violet font-display text-base font-bold text-white shadow-glass">
               ST
             </div>
-            <span className="font-display text-lg font-bold tracking-tight text-slate-900">
+            <span className="font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
               Skyline Tycoon
             </span>
           </div>
           <div className="flex items-center gap-2">
             <ConnectionBadge />
-            <button
-              type="button"
-              className="btn-ghost px-3 py-1.5 text-[12px]"
-              onClick={() => setDialog('rules')}
-            >
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setDialog('rules')}>
               How to play
             </button>
           </div>
         </header>
 
         <main className="flex flex-1 flex-col justify-center py-10">
-          <div className="max-w-2xl">
-            <span className="chip border-neon-cyan/30 text-neon-cyan">
+          <motion.div className="max-w-3xl" variants={hero} initial="hidden" animate="show">
+            <motion.span variants={rise} className="chip inline-flex border-sky-200 bg-white/80 text-sm text-sky-700">
               {LOCAL_MODE
                 ? '3D board game: you against up to three bots'
                 : 'Real-time 3D board game for 2 to 4 players'}
-            </span>
-            <h1 className="mt-4 font-display text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-6xl">
+            </motion.span>
+            <motion.h1
+              variants={rise}
+              className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-7xl"
+            >
               Build the skyline.
               <br />
               <span className="bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-gold bg-clip-text text-transparent">
                 Outlast your friends.
               </span>
-            </h1>
-            <p className="mt-4 max-w-xl text-balance text-[15px] leading-relaxed text-slate-700 sm:text-base">
+            </motion.h1>
+            <motion.p
+              variants={rise}
+              className="mt-5 max-w-2xl text-balance text-lg leading-relaxed text-slate-700 sm:text-xl"
+            >
               Claim cities around the world, build them up, buy your rivals out and race for a side,
               triple or resort monopoly.{' '}
               {LOCAL_MODE
                 ? 'This edition runs entirely in your browser: pick your bots and play.'
                 : 'Private rooms, bots to fill empty seats, and a server that referees every roll.'}
-            </p>
+            </motion.p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <motion.div variants={rise} className="mt-8 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="btn-primary px-6 py-3 text-base"
+                className="btn-primary px-8 py-3.5 text-xl"
                 disabled={busy}
                 onClick={() => {
                   setSettings({ ...DEFAULT_SETTINGS });
@@ -125,15 +139,15 @@ export function Landing() {
               {!LOCAL_MODE && (
                 <button
                   type="button"
-                  className="btn-ghost px-6 py-3 text-base"
+                  className="btn-ghost px-8 py-3.5 text-xl"
                   onClick={() => setDialog('join')}
                 >
                   Join with a code
                 </button>
               )}
-            </div>
+            </motion.div>
 
-            <dl className="mt-10 grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+            <motion.dl variants={rise} className="mt-12 grid max-w-2xl grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
               {[
                 ['32', 'spaces'],
                 ['8', 'countries'],
@@ -141,15 +155,15 @@ export function Landing() {
                 [formatCompact(DEFAULT_SETTINGS.startingCash), 'to start'],
               ].map(([value, label]) => (
                 <div key={label}>
-                  <dt className="font-display text-xl font-bold text-slate-900">{value}</dt>
-                  <dd className="text-[11px] uppercase tracking-wider text-slate-500">{label}</dd>
+                  <dt className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{value}</dt>
+                  <dd className="text-sm font-bold uppercase tracking-wider text-slate-600">{label}</dd>
                 </div>
               ))}
-            </dl>
-          </div>
+            </motion.dl>
+          </motion.div>
         </main>
 
-        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-[11px] text-slate-500">
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-300/70 pt-4 text-sm text-slate-600">
           <span>An original property trading game. Every graphic is drawn in your browser.</span>
           <span>
             {LOCAL_MODE
@@ -212,7 +226,7 @@ export function Landing() {
             </label>
             <input
               id="room-code"
-              className="field mt-1.5 text-center font-mono text-2xl tracking-[0.4em]"
+              className="field mt-2 text-center font-mono text-3xl tracking-[0.4em]"
               maxLength={6}
               autoComplete="off"
               spellCheck={false}

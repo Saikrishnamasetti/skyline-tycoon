@@ -32,10 +32,10 @@ function Side({
   maxCash: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between">
         <span className="label">{title}</span>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-sm text-slate-600">
           holds <Money amount={maxCash} />
         </span>
       </div>
@@ -48,13 +48,13 @@ function Side({
         value={cash}
         onChange={(event) => onCash(event.target.value)}
         placeholder="Cash (optional)"
-        className="field mt-2 px-3 py-2 text-sm"
+        className="field mt-2.5 px-3.5 py-2.5 text-base"
         aria-label={`${title} cash`}
       />
 
-      <div className="no-scrollbar mt-2 max-h-52 space-y-1 overflow-y-auto">
+      <div className="no-scrollbar mt-2.5 max-h-64 space-y-1 overflow-y-auto">
         {holdings.length === 0 && (
-          <p className="py-4 text-center text-xs text-slate-500">No deeds to offer.</p>
+          <p className="py-4 text-center text-sm text-slate-500">No deeds to offer.</p>
         )}
         {holdings.map((index) => {
           const tile = tileAt(index);
@@ -69,14 +69,14 @@ function Side({
               title={transferable.ok ? undefined : transferable.reason}
               onClick={() => onToggle(index)}
               className={cx(
-                'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] transition',
-                active ? 'bg-neon-cyan/15 text-slate-900' : 'text-slate-700 hover:bg-slate-100',
+                'flex min-h-[2.75rem] w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-base transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300',
+                active ? 'bg-sky-100 font-semibold text-slate-900 ring-2 ring-sky-300' : 'text-slate-700 hover:bg-slate-100',
                 !transferable.ok && 'cursor-not-allowed opacity-40',
               )}
             >
               <GroupDot tile={tile} />
               <span className="flex-1 truncate">{tile.name}</span>
-              <span className="font-mono text-[11px] text-slate-500">
+              <span className="font-mono text-sm text-slate-500">
                 {formatMoney(propertyValue(state, index))}
               </span>
             </button>
@@ -151,7 +151,7 @@ export function TradePanel({ open, onClose, state, me }: TradePanelProps) {
       title="Propose a trade"
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[11px] text-slate-500">
+          <span className="text-sm text-slate-500">
             Lots with buildings cannot change hands. Sell the buildings first.
           </span>
           <div className="flex gap-2">
@@ -166,14 +166,14 @@ export function TradePanel({ open, onClose, state, me }: TradePanelProps) {
       }
     >
       {rivals.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">
+        <p className="py-8 text-center text-base text-slate-500">
           There is nobody left to trade with.
         </p>
       ) : (
         <div className="space-y-4">
           <div>
             <span className="label">Trading with</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {rivals.map((rival) => (
                 <button
                   key={rival.id}
@@ -182,14 +182,15 @@ export function TradePanel({ open, onClose, state, me }: TradePanelProps) {
                     setPartnerId(rival.id);
                     setRequestTiles([]);
                   }}
+                  aria-pressed={partner?.id === rival.id}
                   className={cx(
-                    'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition',
+                    'option flex items-center gap-2.5 px-3.5 py-2 text-base font-semibold',
                     partner?.id === rival.id
-                      ? 'border-neon-cyan/60 bg-neon-cyan/10 text-slate-900'
-                      : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100',
+                      ? 'border-sky-400 bg-sky-50 text-slate-900'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
                   )}
                 >
-                  <Avatar player={rival} size={24} />
+                  <Avatar player={rival} size={32} />
                   {rival.name}
                 </button>
               ))}
@@ -254,14 +255,14 @@ export function TradeInbox({ state, me }: { state: GameState; me: Player | null 
       {inbox.map((trade) => {
         const from = state.players.find((p) => p.id === trade.fromId);
         return (
-          <div key={trade.id} className="panel animate-pop-in px-3 py-2.5">
-            <div className="flex items-center gap-2">
-              {from && <Avatar player={from} size={24} />}
-              <span className="text-[12.5px] font-semibold text-slate-900">
+          <div key={trade.id} className="panel animate-pop-in px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              {from && <Avatar player={from} size={32} />}
+              <span className="font-display text-lg font-semibold text-slate-900">
                 {from?.name ?? 'Someone'} offers a trade
               </span>
             </div>
-            <div className="mt-1.5 grid grid-cols-2 gap-2 text-[11.5px]">
+            <div className="mt-2 grid grid-cols-2 gap-3 text-base">
               <div>
                 <span className="label">You get</span>
                 <Summary state={state} cash={trade.offerCash} tiles={trade.offerTiles} />
@@ -274,14 +275,14 @@ export function TradeInbox({ state, me }: { state: GameState; me: Player | null 
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
-                className="btn-primary flex-1 px-3 py-1.5 text-[12px]"
+                className="btn-primary flex-1"
                 onClick={() => act({ type: 'respondTrade', tradeId: trade.id, accept: true })}
               >
                 Accept
               </button>
               <button
                 type="button"
-                className="btn-ghost flex-1 px-3 py-1.5 text-[12px]"
+                className="btn-ghost flex-1"
                 onClick={() => act({ type: 'respondTrade', tradeId: trade.id, accept: false })}
               >
                 Decline
@@ -293,13 +294,13 @@ export function TradeInbox({ state, me }: { state: GameState; me: Player | null 
       {outbox.map((trade) => {
         const to = state.players.find((p) => p.id === trade.toId);
         return (
-          <div key={trade.id} className="panel flex items-center gap-2 px-3 py-2 text-[12px]">
-            <span className="flex-1 text-slate-500">
+          <div key={trade.id} className="panel flex items-center gap-2 px-4 py-2.5 text-base">
+            <span className="flex-1 text-slate-600">
               Offer pending with {to?.name ?? 'a rival'}
             </span>
             <button
               type="button"
-              className="btn-ghost px-2.5 py-1 text-[11px]"
+              className="btn-ghost btn-sm"
               onClick={() => act({ type: 'cancelTrade', tradeId: trade.id })}
             >
               Withdraw

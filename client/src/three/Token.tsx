@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { BOARD_SIZE, COLOR_HEX } from '@shared';
+import { BOARD_SIZE, COLOR_HEX, STEP_MS } from '@shared';
 import type { Player } from '@shared';
 import { TILE_TOP_Y, tokenSlot, walkPoint } from '../lib/layout';
 import type { TokenTarget } from '../store/useGame';
@@ -13,8 +13,11 @@ interface TokenProps {
   onStep?: () => void;
 }
 
-/** Tiles travelled per second while a piece walks the board. */
-const WALK_SPEED = 7.5;
+/** Spaces travelled per second while a piece walks the board. */
+const WALK_SPEED = 1000 / STEP_MS;
+
+/** Slow out of one space and into the next, so each hop reads as a step. */
+const easeStep = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 function TokenBody({ shape, color }: { shape: Player['token']; color: string }) {
   const material = (
@@ -102,6 +105,10 @@ export function Token({ player, target, isCurrent, onStep }: TokenProps) {
     dir: 1,
     t: 0,
     seq: target.seq,
+    /** performance.now() time the walk may begin, once the dice have settled. */
+    startAt: 0,
+    /** Brief squash when the piece lands on a space. */
+    land: 0,
   });
 
   useEffect(() => {
@@ -123,41 +130,51 @@ export function Token({ player, target, isCurrent, onStep }: TokenProps) {
     anim.dir = dir;
     anim.remaining = distance === 0 ? 0 : distance;
     anim.t = 0;
+    anim.startAt = target.startAt ?? 0;
     if (anim.remaining === 0) anim.index = target.index;
-  }, [target.seq, target.index, target.walk, target.steps]);
+  }, [target.seq, target.index, target.walk, target.steps, target.startAt]);
 
   const seat = player.seat;
 
   useFrame((state, delta) => {
     const anim = walk.current;
     if (!group.current) return;
+    // Hold still until the dice have landed and the pause is over.
+    const waiting = anim.remaining > 0 && performance.now() < anim.startAt;
+    // A long frame (a backgrounded tab) must not skip half the walk at once.
+    const step = Math.min(delta, 0.1);
 
-    if (anim.remaining > 0) {
-      anim.t += delta * WALK_SPEED;
+    if (anim.remaining > 0 && !waiting) {
+      anim.t += step * WALK_SPEED;
       while (anim.t >= 1 && anim.remaining > 0) {
         anim.t -= 1;
         anim.index = (anim.index + anim.dir + BOARD_SIZE) % BOARD_SIZE;
         anim.remaining -= 1;
+        anim.land = 1;
         onStep?.();
       }
       if (anim.remaining === 0) anim.t = 0;
     }
+    anim.land = Math.max(0, anim.land - step * 7);
 
-    if (anim.remaining > 0) {
+    if (anim.remaining > 0 && !waiting) {
       const next = (anim.index + anim.dir + BOARD_SIZE) % BOARD_SIZE;
-      const [x, y, z] = walkPoint(anim.index, next, anim.t, seat);
+      const [x, y, z] = walkPoint(anim.index, next, easeStep(anim.t), seat);
       group.current.position.set(x, y, z);
-      group.current.rotation.y += delta * 3.2;
+      group.current.rotation.y += step * 2.2;
     } else {
       const [x, , z] = tokenSlot(anim.index, seat);
-      const bob = isCurrent ? Math.sin(state.clock.elapsedTime * 2.4) * 0.05 : 0;
+      const bob = isCurrent && anim.remaining === 0 ? Math.sin(state.clock.elapsedTime * 2.4) * 0.05 : 0;
       group.current.position.set(x, TILE_TOP_Y + bob, z);
       group.current.rotation.y = THREE.MathUtils.lerp(
         group.current.rotation.y,
         0,
-        Math.min(1, delta * 6),
+        Math.min(1, step * 6),
       );
     }
+    // Squash a little on each landing, then spring back.
+    const squash = Math.sin(anim.land * Math.PI) * 0.14;
+    group.current.scale.set(1 + squash * 0.6, 1 - squash, 1 + squash * 0.6);
 
     if (ring.current) {
       const material = ring.current.material as THREE.MeshBasicMaterial;

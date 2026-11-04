@@ -4,3 +4,4 @@ export * from './cards';
 export * from './constants';
 export * from './rules';
 export * from './protocol';
+export * from './timing';

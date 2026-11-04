@@ -126,17 +126,17 @@ export function Room() {
 
   if (stage === 'need-identity') {
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-10">
-        <div className="panel p-6">
-          <h1 className="font-display text-xl font-bold text-slate-900">Join room {code}</h1>
-          <p className="mt-1 text-[12.5px] text-slate-500">
+      <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-5 py-10">
+        <div className="panel p-7">
+          <h1 className="font-display text-3xl font-bold text-slate-900">Join room {code}</h1>
+          <p className="mt-1.5 text-base text-slate-600">
             Pick a name and a piece, then take your seat.
           </p>
           <div className="mt-5">
             <IdentityPicker value={identity} onChange={setIdentity} />
           </div>
           {error && (
-            <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700">
+            <p className="mt-4 rounded-xl border-2 border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700" role="alert">
               {error}
             </p>
           )}
@@ -177,10 +177,10 @@ function Splash({ message, children }: { message: string; children?: React.React
   }, []);
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-violet font-display text-base font-bold text-white">
+      <div className="flex h-16 w-16 animate-float items-center justify-center rounded-3xl bg-gradient-to-br from-neon-cyan to-neon-violet font-display text-xl font-bold text-white shadow-glass">
         ST
       </div>
-      <p className="text-sm text-slate-700">{message}</p>
+      <p className="text-lg font-semibold text-slate-700">{message}</p>
       <ConnectionBadge />
       {children}
     </div>

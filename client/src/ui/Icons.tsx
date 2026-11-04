@@ -55,3 +55,15 @@ export const LeaveIcon = () => (
     <path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" />
   </svg>
 );
+
+export const CloseIcon = ({ size = 20 }: { size?: number }) => (
+  <svg {...base} width={size} height={size} strokeWidth={2.4}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+
+export const CheckIcon = ({ size = 18 }: { size?: number }) => (
+  <svg {...base} width={size} height={size} strokeWidth={3}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);

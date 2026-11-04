@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { MotionConfig } from 'motion/react';
 import { Landing } from './pages/Landing';
 import { Room } from './pages/Room';
 import { Toasts } from './ui/Toasts';
@@ -11,13 +12,16 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
 export default function App() {
   useSocketBridge();
   return (
-    <BrowserRouter basename={basename}>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/room/:code" element={<Room />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <Toasts />
-    </BrowserRouter>
+    // Honour the system "reduce motion" setting in every animation.
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter basename={basename}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/room/:code" element={<Room />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Toasts />
+      </BrowserRouter>
+    </MotionConfig>
   );
 }

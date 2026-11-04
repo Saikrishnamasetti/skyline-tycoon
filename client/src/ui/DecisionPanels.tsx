@@ -25,12 +25,12 @@ export function Shell({
   return (
     <div
       className={cx(
-        'panel flex flex-wrap items-center gap-3 px-3 py-2.5 sm:px-4',
-        tone === 'gold' && 'border-amber-400/30',
-        tone === 'danger' && 'border-rose-400/35',
+        'panel flex flex-wrap items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-3.5',
+        tone === 'gold' && 'border-amber-300',
+        tone === 'danger' && 'border-rose-300',
       )}
     >
-      {timer && timer.seconds > 0 && <TimerRing seconds={timer.seconds} total={timer.total} size={38} />}
+      {timer && timer.seconds > 0 && <TimerRing seconds={timer.seconds} total={timer.total} size={48} />}
       {children}
     </div>
   );
@@ -38,12 +38,12 @@ export function Shell({
 
 export function Waiting({ label }: { label: string }) {
   return (
-    <div className="flex flex-1 items-center gap-2 text-sm text-slate-500">
-      <span className="flex gap-1">
+    <div className="flex flex-1 items-center gap-3 text-base font-semibold text-slate-600" role="status">
+      <span className="flex gap-1.5" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-neon-cyan/70"
+            className="h-2 w-2 rounded-full bg-sky-500/80"
             style={{ animation: `float 1.2s ease-in-out ${i * 0.15}s infinite` }}
           />
         ))}
@@ -55,9 +55,9 @@ export function Waiting({ label }: { label: string }) {
 
 function Heading({ title, detail }: { title: ReactNode; detail?: ReactNode }) {
   return (
-    <div className="flex min-w-[10rem] flex-1 flex-col gap-0.5">
-      <span className="font-display text-sm font-semibold text-slate-900">{title}</span>
-      {detail && <span className="text-[11px] text-slate-500">{detail}</span>}
+    <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
+      <span className="font-display text-lg font-semibold leading-snug text-slate-900">{title}</span>
+      {detail && <span className="text-sm text-slate-600">{detail}</span>}
     </div>
   );
 }
@@ -97,7 +97,7 @@ export function BuildPanel({ state, me }: { state: GameState; me: Player }) {
             <button
               key={option.level}
               type="button"
-              className="btn-gold flex-col gap-0 px-3 py-1.5"
+              className="btn-gold flex-col gap-0 px-4 py-2"
               disabled={option.cost > me.cash}
               onClick={() => act({ type: 'build', level: option.level })}
             >
@@ -105,7 +105,7 @@ export function BuildPanel({ state, me }: { state: GameState; me: Player }) {
                 {levelLabel(option.level, resort)} - {formatCompact(option.cost)}
               </span>
               {rent !== null && (
-                <span className="text-[10px] font-medium opacity-75">rent {formatCompact(rent)}</span>
+                <span className="text-caption font-semibold opacity-80">rent {formatCompact(rent)}</span>
               )}
             </button>
           );
@@ -160,13 +160,13 @@ export function ChampionshipPanel({ state, me }: { state: GameState; me: Player 
           <button
             key={index}
             type="button"
-            className="btn-gold px-3 py-1.5 text-[12px]"
+            className="btn-gold btn-sm"
             onClick={() => act({ type: 'hostChampionship', tile: index })}
           >
             {tileAt(index).name}
           </button>
         ))}
-        <button type="button" className="btn-ghost px-3 py-1.5 text-[12px]" onClick={() => act({ type: 'skipChampionship' })}>
+        <button type="button" className="btn-ghost btn-sm" onClick={() => act({ type: 'skipChampionship' })}>
           Skip
         </button>
       </div>
@@ -189,11 +189,11 @@ export function DebtPanel({
   const couldRaise = liquidValue(state, me.id) >= debt.amount;
   return (
     <>
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-0.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+      <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
+        <span className="font-display text-lg font-semibold text-rose-700">
           You owe {formatCompact(debt.amount)}
         </span>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-sm text-slate-600">
           {debt.reason}. You hold <Money amount={me.cash} />.
           {!canCover && couldRaise ? ' Sell properties to the bank at half value.' : ''}
           {!couldRaise ? ' Even selling everything will not cover it.' : ''}

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   BUYOUT_MULTIPLIER,
   GROUPS,
@@ -7,13 +8,14 @@ import {
   championshipMultiplier,
   formatCompact,
   groupMembers,
+  playerHoldings,
   propertyValue,
   rentFor,
   tileAt,
 } from '@shared';
-import type { GameState } from '@shared';
-import { cx } from '../lib/format';
-import { Avatar } from './atoms';
+import type { GameState, GroupId } from '@shared';
+import { drawFlag } from '../lib/flags';
+import { Avatar, Stat } from './atoms';
 
 const DESCRIPTIONS: Record<string, string> = {
   start: 'Collect your salary every time you pass or land here.',
@@ -23,6 +25,30 @@ const DESCRIPTIONS: Record<string, string> = {
   chance: 'Draw a Chance card. It may help you or hurt you.',
   tax: 'Pay ten percent of everything you have built.',
 };
+
+/** The same flag the board draws on the city's band, at card size. */
+function Flag({ group }: { group: GroupId }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const ctx = ref.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(3, 0, 0, 3, 0, 0);
+    drawFlag(ctx, group, 0, 0, 36, 24);
+  }, [group]);
+  return (
+    <canvas
+      ref={ref}
+      width={108}
+      height={72}
+      className="h-8 w-12 shrink-0 rounded-md shadow-sm ring-2 ring-white/80"
+      aria-hidden
+    />
+  );
+}
+
+function levelName(level: number): string {
+  return level >= HOTEL_LEVEL ? 'Hotel' : `${level} house${level > 1 ? 's' : ''}`;
+}
 
 /** The deed: what it costs, what it earns at each level, and who holds it. */
 export function PropertyCard({ state, index }: { state: GameState; index: number }) {
@@ -34,101 +60,123 @@ export function PropertyCard({ state, index }: { state: GameState; index: number
     tile.kind === 'city' ? GROUPS[tile.group].color : tile.kind === 'resort' ? TILE_ACCENT.resort : '#64748b';
   const kicker =
     tile.kind === 'city'
-      ? `${GROUPS[tile.group].label} - ${groupMembers(tile.group).length} cities`
+      ? `${GROUPS[tile.group].label} · ${groupMembers(tile.group).length} cities`
       : tile.kind === 'resort'
         ? 'Resort'
         : 'Special space';
+  const ownable = tile.kind === 'city' || tile.kind === 'resort';
+  const resortsHeld = owner
+    ? playerHoldings(state, owner.id).filter((i) => tileAt(i).kind === 'resort').length
+    : 0;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="px-4 py-3" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}77)` }}>
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-950/70">{kicker}</div>
-        <div className="font-display text-lg font-bold text-ink-950">{tile.name}</div>
+    <div className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white">
+      <div
+        className="flex items-center gap-3.5 px-5 py-4"
+        style={{ background: `linear-gradient(135deg, ${accent}, ${accent}80)` }}
+      >
+        {tile.kind === 'city' && <Flag group={tile.group} />}
+        <div className="min-w-0">
+          <div className="text-xs font-extrabold uppercase tracking-[0.16em] text-ink-950/70">{kicker}</div>
+          <div className="font-display text-3xl font-bold leading-tight text-ink-950">{tile.name}</div>
+        </div>
       </div>
 
-      <div className="space-y-2.5 px-4 py-3 text-[13px]">
-        {(tile.kind === 'city' || tile.kind === 'resort') &&
+      <div className="space-y-4 px-5 py-5 text-base">
+        {ownable &&
           (owner ? (
-            <div className="flex items-center gap-2">
-              <Avatar player={owner} size={26} />
+            <div className="flex flex-wrap items-center gap-3">
+              <Avatar player={owner} size={40} />
               <span className="text-slate-700">
-                Owned by <span className="font-semibold text-slate-900">{owner.name}</span>
+                Owned by <span className="font-bold text-slate-900">{owner.name}</span>
               </span>
-              <span className="ml-auto font-mono text-slate-800">rent {formatCompact(rentFor(state, index))}</span>
+              <span className="ml-auto rounded-full bg-slate-900 px-3.5 py-1 font-display text-lg font-semibold tabular-nums text-white">
+                Rent {formatCompact(rentFor(state, index))}
+              </span>
             </div>
           ) : (
-            <div className="text-slate-500">Unclaimed - land here to buy it.</div>
+            <p className="rounded-xl bg-slate-50 px-4 py-3 text-slate-600">Unclaimed. Land here to buy it.</p>
           ))}
 
         {multiplier > 1 && (
-          <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-amber-700">
-            Championship city - rent x{multiplier}
+          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 font-semibold text-amber-800">
+            Championship city: rent x{multiplier}
           </div>
         )}
 
         {tile.kind === 'city' && (
           <>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-              {tile.rent.map((rent, i) => {
-                const level = i + 1;
-                return (
-                  <div
-                    key={level}
-                    className={cx(
-                      'flex items-center justify-between px-1 py-1 text-[12.5px]',
-                      holding?.owner && holding.level === level && 'rounded-lg bg-neon-cyan/12 font-semibold text-neon-cyan',
-                    )}
-                  >
-                    <span className="text-slate-500">
-                      {level >= HOTEL_LEVEL ? 'Hotel' : `${level} house${level > 1 ? 's' : ''}`}
-                    </span>
-                    <span className="font-mono text-slate-800">{formatCompact(rent * multiplier)}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <Row label="Each house" value={formatCompact(tile.houseCost)} />
-            <Row label="Hotel (after three houses)" value={formatCompact(tile.hotelCost)} />
-            {holding?.owner && holding.level < HOTEL_LEVEL && (
-              <Row label={`Buyout price (x${BUYOUT_MULTIPLIER})`} value={formatCompact(propertyValue(state, index) * BUYOUT_MULTIPLIER)} />
-            )}
-            <p className="text-[11.5px] text-slate-500">
-              Two houses on your first lap, a third after you pass Start, then a hotel on a later visit. A hotel
-              cannot be bought out or shaken by an earthquake.
+            <section>
+              <h3 className="label mb-2">Rent{multiplier > 1 ? ` (x${multiplier})` : ''}</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {tile.rent.map((rent, i) => {
+                  const level = i + 1;
+                  const current = !!holding?.owner && holding.level === level;
+                  return (
+                    <Stat
+                      key={level}
+                      label={
+                        <span className="flex items-center justify-between gap-1">
+                          {levelName(level)}
+                          {current && (
+                            <span className="rounded-full bg-sky-500 px-1.5 text-xs leading-5 text-white">
+                              Now
+                            </span>
+                          )}
+                        </span>
+                      }
+                      value={formatCompact(rent * multiplier)}
+                      tone={current ? 'active' : level >= HOTEL_LEVEL ? 'gold' : 'default'}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+            <section>
+              <h3 className="label mb-2">Building costs</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Stat label="Each house" value={formatCompact(tile.houseCost)} />
+                <Stat label="Hotel" value={formatCompact(tile.hotelCost)} />
+                {holding?.owner && holding.level < HOTEL_LEVEL && (
+                  <Stat
+                    label={`Buyout (x${BUYOUT_MULTIPLIER})`}
+                    value={formatCompact(propertyValue(state, index) * BUYOUT_MULTIPLIER)}
+                  />
+                )}
+              </div>
+            </section>
+            <p className="text-sm leading-relaxed text-slate-500">
+              Two houses on your first lap, a third after you pass Start, then a hotel (replacing three houses) on a
+              later visit. A hotel cannot be bought out or shaken by an earthquake.
             </p>
           </>
         )}
 
         {tile.kind === 'resort' && (
           <>
-            <Row label="Price" value={formatCompact(tile.price)} />
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-              {RESORT_RENT.map((rent, i) => (
-                <div key={rent} className="flex items-center justify-between px-1 py-1 text-[12.5px]">
-                  <span className="text-slate-500">{i + 1} resort{i ? 's' : ''} owned</span>
-                  <span className="font-mono text-slate-800">{formatCompact(rent)}</span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between px-1 py-1 text-[12.5px] font-semibold text-neon-gold">
-                <span>All four</span>
-                <span>Instant win</span>
+            <section>
+              <h3 className="label mb-2">Rent by resorts owned</h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {RESORT_RENT.map((rent, i) => (
+                  <Stat
+                    key={rent}
+                    label={`${i + 1} resort${i ? 's' : ''}`}
+                    value={formatCompact(rent)}
+                    tone={resortsHeld === i + 1 ? 'active' : 'default'}
+                  />
+                ))}
+                <Stat label="All four" value="Instant win" tone="gold" />
               </div>
+            </section>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <Stat label="Price" value={formatCompact(tile.price)} />
             </div>
-            <p className="text-[11.5px] text-slate-500">Resorts can never be bought out.</p>
+            <p className="text-sm leading-relaxed text-slate-500">Resorts can never be bought out.</p>
           </>
         )}
 
-        {DESCRIPTIONS[tile.kind] && <p className="text-slate-700">{DESCRIPTIONS[tile.kind]}</p>}
+        {DESCRIPTIONS[tile.kind] && <p className="text-lg leading-relaxed text-slate-700">{DESCRIPTIONS[tile.kind]}</p>}
       </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-mono text-slate-900">{value}</span>
     </div>
   );
 }

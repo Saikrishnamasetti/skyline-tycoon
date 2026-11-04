@@ -14,24 +14,59 @@ const PAPER_EDGE = '#ddd7c7';
 const INK = '#18213a';
 const INK_SOFT = '#5b678a';
 
-const cache = new Map<string, THREE.CanvasTexture>();
+const DISPLAY = 'Fredoka, Nunito, sans-serif';
+const BODY = 'Nunito, sans-serif';
 
-function makeCanvas(width: number, height: number) {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('2D canvas is unavailable');
-  return { canvas, ctx };
+interface Entry {
+  texture: THREE.CanvasTexture;
+  /** Redraws the canvas in place, e.g. once the web fonts have arrived. */
+  paint: () => void;
 }
 
-function finish(canvas: HTMLCanvasElement, key: string): THREE.CanvasTexture {
+const cache = new Map<string, Entry>();
+
+/**
+ * Draws a texture once and caches it. `width` and `height` are the logical
+ * size the painter works in; `scale` sets how many canvas pixels back each
+ * logical one, so text stays crisp when the camera moves in close.
+ */
+function paintTexture(
+  key: string,
+  width: number,
+  height: number,
+  painter: (ctx: CanvasRenderingContext2D) => void,
+  scale = 1,
+): THREE.CanvasTexture {
+  const hit = cache.get(key);
+  if (hit) return hit.texture;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2D canvas is unavailable');
+  const paint = () => {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    painter(ctx);
+  };
+  paint();
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   texture.needsUpdate = true;
-  cache.set(key, texture);
+  cache.set(key, { texture, paint });
   return texture;
+}
+
+// A texture painted before Fredoka finished downloading was measured and
+// drawn with a fallback face. Repaint everything when a font arrives.
+if (typeof document !== 'undefined' && document.fonts) {
+  document.fonts.addEventListener('loadingdone', () => {
+    for (const entry of cache.values()) {
+      entry.paint();
+      entry.texture.needsUpdate = true;
+    }
+  });
 }
 
 function roundRect(
@@ -80,6 +115,56 @@ function drawLines(
   lineHeight: number,
 ): void {
   lines.forEach((line, i) => ctx.fillText(line, centerX, startY + i * lineHeight));
+}
+
+interface Fit {
+  size: number;
+  lines: string[];
+}
+
+/**
+ * The largest font size, from `max` down to `min`, at which `text` wraps into
+ * at most `maxLines` lines no wider than `maxWidth`. Leaves `ctx.font` set to
+ * the winning size. Returns null when even `min` does not fit.
+ */
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  opts: { weight: number; family: string; max: number; min: number; maxWidth: number; maxLines: number },
+): Fit | null {
+  for (let size = opts.max; size >= opts.min; size -= 1) {
+    ctx.font = `${opts.weight} ${size}px ${opts.family}`;
+    const lines = wrapText(ctx, text, opts.maxWidth);
+    if (lines.length <= opts.maxLines && lines.every((line) => ctx.measureText(line).width <= opts.maxWidth)) {
+      return { size, lines };
+    }
+  }
+  return null;
+}
+
+/** Fits on one line if it can at a decent size, otherwise on two. */
+function fitOneOrTwo(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  opts: { weight: number; family: string; max: number; min: number; maxWidth: number; twoLineMax?: number },
+): Fit {
+  const single = fitText(ctx, text, { ...opts, min: Math.round(opts.max * 0.72), maxLines: 1 });
+  if (single) return single;
+  const double = fitText(ctx, text, { ...opts, max: opts.twoLineMax ?? opts.max, maxLines: 2 });
+  if (double) return double;
+  ctx.font = `${opts.weight} ${opts.min}px ${opts.family}`;
+  return { size: opts.min, lines: wrapText(ctx, text, opts.maxWidth).slice(0, 2) };
+}
+
+/** Draws lines centred vertically on `centerY`. */
+function drawBlock(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  x: number,
+  centerY: number,
+  lineHeight: number,
+): void {
+  drawLines(ctx, lines, x, centerY - ((lines.length - 1) * lineHeight) / 2, lineHeight);
 }
 
 function paper(ctx: CanvasRenderingContext2D, w: number, h: number): void {
@@ -132,7 +217,7 @@ function drawQuestion(ctx: CanvasRenderingContext2D, cx: number, cy: number): vo
   roundRect(ctx, cx - 50, cy - 50, 100, 100, 22);
   ctx.fill();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '600 78px Fredoka, Nunito, sans-serif';
+  ctx.font = `600 78px ${DISPLAY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('?', cx, cy + 4);
@@ -144,7 +229,7 @@ function drawTaxCoin(ctx: CanvasRenderingContext2D, cx: number, cy: number): voi
   ctx.arc(cx, cy, 48, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '800 50px Nunito, sans-serif';
+  ctx.font = `800 50px ${BODY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('%', cx, cy + 2);
@@ -242,202 +327,253 @@ function drawPlane(ctx: CanvasRenderingContext2D, cx: number, cy: number): void 
 /** Matches the 2.29 x 3 footprint of a side tile. */
 const SIDE_W = 304;
 const SIDE_H = 400;
+/**
+ * Extra canvas resolution for board tiles, so their names stay sharp when the
+ * camera zooms in. About 30MB of texture memory for the whole board.
+ */
+const TILE_SCALE = 1.5;
+/**
+ * Centre line of the price row. The owner's colour bar covers roughly the
+ * bottom 32px of a side tile, so nothing important goes below ~365.
+ */
+const FOOT_Y = SIDE_H - 60;
+/** Bottom edge of the coloured country band. */
+const BAND_BOTTOM = 90;
+
+/** White band text with a soft drop shadow so it reads on light bands too. */
+function withBandShadow(ctx: CanvasRenderingContext2D, draw: () => void): void {
+  ctx.save();
+  ctx.shadowColor = 'rgba(15,23,42,0.32)';
+  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 2;
+  draw();
+  ctx.restore();
+}
 
 function band(ctx: CanvasRenderingContext2D, color: string, label: string, flag?: GroupId): void {
   ctx.fillStyle = color;
-  ctx.fillRect(6, 6, SIDE_W - 12, 84);
+  ctx.fillRect(6, 6, SIDE_W - 12, BAND_BOTTOM - 6);
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.fillRect(6, 82, SIDE_W - 12, 8);
+  ctx.fillRect(6, BAND_BOTTOM - 8, SIDE_W - 12, 8);
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
+  const text = label.toUpperCase();
   if (flag) {
-    drawFlag(ctx, flag, 18, 24, 64, 42);
+    drawFlag(ctx, flag, 16, 22, 68, 46);
+    const left = 96;
+    const fit = fitOneOrTwo(ctx, text, {
+      weight: 600,
+      family: DISPLAY,
+      max: 34,
+      twoLineMax: 28,
+      min: 16,
+      maxWidth: SIDE_W - left - 16,
+    });
     ctx.textAlign = 'left';
-    let size = 26;
-    do {
-      ctx.font = `600 ${size}px Fredoka, Nunito, sans-serif`;
-      size -= 1;
-    } while (ctx.measureText(label.toUpperCase()).width > SIDE_W - 112 && size > 14);
-    ctx.fillText(label.toUpperCase(), 94, 47);
+    withBandShadow(ctx, () => drawBlock(ctx, fit.lines, left, 45, fit.size * 0.98));
   } else {
+    const fit = fitOneOrTwo(ctx, text, { weight: 600, family: DISPLAY, max: 36, min: 18, maxWidth: SIDE_W - 40 });
     ctx.textAlign = 'center';
-    ctx.font = '600 26px Fredoka, Nunito, sans-serif';
-    ctx.fillText(label.toUpperCase(), SIDE_W / 2, 47);
+    withBandShadow(ctx, () => drawBlock(ctx, fit.lines, SIDE_W / 2, 45, fit.size));
   }
   ctx.textAlign = 'center';
 }
 
-function drawSideTile(tile: Tile): HTMLCanvasElement {
-  const { canvas, ctx } = makeCanvas(SIDE_W, SIDE_H);
+/** The space's name, as large as the room between `top` and `bottom` allows. */
+function tileName(ctx: CanvasRenderingContext2D, name: string, top: number, bottom: number, max: number): void {
+  const fit = fitOneOrTwo(ctx, name.toUpperCase(), {
+    weight: 600,
+    family: DISPLAY,
+    max,
+    min: 24,
+    maxWidth: SIDE_W - 32,
+  });
+  // Two lines must also fit the height available.
+  let size = fit.size;
+  if (fit.lines.length * size * 1.06 > bottom - top) {
+    size = Math.floor((bottom - top) / (fit.lines.length * 1.06));
+    ctx.font = `600 ${size}px ${DISPLAY}`;
+  }
+  ctx.fillStyle = INK;
+  drawBlock(ctx, fit.lines, SIDE_W / 2, (top + bottom) / 2, size * 1.06);
+}
+
+function footer(ctx: CanvasRenderingContext2D, text: string, color: string, size: number): void {
+  ctx.fillStyle = color;
+  ctx.font = `800 ${size}px ${BODY}`;
+  ctx.fillText(text, SIDE_W / 2, FOOT_Y);
+}
+
+function paintSideTile(ctx: CanvasRenderingContext2D, tile: Tile): void {
   paper(ctx, SIDE_W, SIDE_H);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  let nameTop = 150;
-  let price: number | null = null;
+  // Room for the name stops a little above the price row.
+  const nameBottom = FOOT_Y - 32;
 
   if (tile.kind === 'city') {
     band(ctx, GROUPS[tile.group].color, GROUPS[tile.group].label, tile.group);
-    price = tile.houseCost;
-    nameTop = 168;
+    tileName(ctx, tile.name, BAND_BOTTOM + 14, nameBottom, 56);
+    footer(ctx, formatCompact(tile.houseCost), INK, 44);
   } else if (tile.kind === 'resort') {
     band(ctx, TILE_ACCENT.resort, 'Resort');
-    drawPalm(ctx, SIDE_W / 2, 176, 0.85);
-    price = tile.price;
-    nameTop = 270;
+    drawPalm(ctx, SIDE_W / 2, 158, 0.74);
+    tileName(ctx, tile.name, 214, nameBottom, 48);
+    footer(ctx, formatCompact(tile.price), INK, 44);
   } else if (tile.kind === 'chance') {
-    drawQuestion(ctx, SIDE_W / 2, 130);
-    nameTop = 236;
+    drawQuestion(ctx, SIDE_W / 2, 132);
+    tileName(ctx, tile.name, 196, nameBottom, 50);
+    footer(ctx, 'DRAW A CARD', INK_SOFT, 30);
   } else if (tile.kind === 'tax') {
-    drawTaxCoin(ctx, SIDE_W / 2, 130);
-    nameTop = 236;
+    drawTaxCoin(ctx, SIDE_W / 2, 132);
+    tileName(ctx, tile.name, 196, nameBottom, 50);
+    footer(ctx, 'PAY 10%', TILE_ACCENT.tax, 42);
+  } else {
+    tileName(ctx, tile.name, BAND_BOTTOM, nameBottom, 50);
   }
-
-  ctx.fillStyle = INK;
-  ctx.font = '600 36px Fredoka, Nunito, sans-serif';
-  const lines = wrapText(ctx, tile.name.toUpperCase(), SIDE_W - 36);
-  drawLines(ctx, lines.slice(0, 2), SIDE_W / 2, nameTop, 38);
-
-  ctx.font = '700 30px Nunito, sans-serif';
-  if (price !== null) {
-    ctx.fillStyle = INK_SOFT;
-    ctx.fillText(formatCompact(price), SIDE_W / 2, SIDE_H - 40);
-  } else if (tile.kind === 'tax') {
-    ctx.fillStyle = TILE_ACCENT.tax;
-    ctx.fillText('PAY 10%', SIDE_W / 2, SIDE_H - 40);
-  } else if (tile.kind === 'chance') {
-    ctx.fillStyle = INK_SOFT;
-    ctx.font = '700 22px Nunito, sans-serif';
-    ctx.fillText('DRAW A CARD', SIDE_W / 2, SIDE_H - 40);
-  }
-  return canvas;
 }
 
 /* -------------------------------------------------------- corner tiles */
 
 const CORNER_PX = 448;
 
-function drawCornerTile(tile: Tile): HTMLCanvasElement {
-  const { canvas, ctx } = makeCanvas(CORNER_PX, CORNER_PX);
+interface CornerSpec {
+  title: string;
+  caption: string;
+  art: (ctx: CanvasRenderingContext2D, mid: number) => void;
+}
+
+const CORNERS: Partial<Record<Tile['kind'], CornerSpec>> = {
+  start: {
+    title: 'START',
+    caption: 'Collect your salary',
+    art: (ctx, mid) => drawArrow(ctx, mid, 142, '#2fb673'),
+  },
+  island: {
+    title: 'ISLAND',
+    caption: 'Stranded for up to 3 turns',
+    art: (ctx, mid) => drawIsland(ctx, mid, 138),
+  },
+  championship: {
+    title: 'CHAMPIONSHIP',
+    caption: 'Host it, multiply rent',
+    art: (ctx, mid) => drawTrophy(ctx, mid, 150),
+  },
+  worldtour: {
+    title: 'WORLD TOUR',
+    caption: 'Fly anywhere next turn',
+    art: (ctx, mid) => drawPlane(ctx, mid, 142),
+  },
+};
+
+function paintCornerTile(ctx: CanvasRenderingContext2D, tile: Tile): void {
   paper(ctx, CORNER_PX, CORNER_PX);
   const mid = CORNER_PX / 2;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  const spec = CORNERS[tile.kind];
+  if (!spec) return;
 
-  const title = (text: string) => {
-    ctx.fillStyle = INK;
-    ctx.font = '600 46px Fredoka, Nunito, sans-serif';
-    ctx.fillText(text, mid, 300);
-  };
-  const caption = (text: string) => {
-    ctx.fillStyle = INK_SOFT;
-    ctx.font = '700 24px Nunito, sans-serif';
-    ctx.fillText(text, mid, 356);
-  };
+  spec.art(ctx, mid);
 
-  if (tile.kind === 'start') {
-    drawArrow(ctx, mid, 150, '#2fb673');
-    title('START');
-    caption('Collect your salary');
-  } else if (tile.kind === 'island') {
-    drawIsland(ctx, mid, 150);
-    title('ISLAND');
-    caption('Stranded for up to 3 turns');
-  } else if (tile.kind === 'championship') {
-    drawTrophy(ctx, mid, 158);
-    title('CHAMPIONSHIP');
-    caption('Host it, multiply rent');
-  } else {
-    drawPlane(ctx, mid, 150);
-    title('WORLD TOUR');
-    caption('Fly anywhere next turn');
-  }
-  return canvas;
+  const title = fitText(ctx, spec.title, {
+    weight: 600,
+    family: DISPLAY,
+    max: 62,
+    min: 30,
+    maxWidth: CORNER_PX - 40,
+    maxLines: 1,
+  });
+  ctx.fillStyle = INK;
+  if (!title) ctx.font = `600 30px ${DISPLAY}`;
+  ctx.fillText(spec.title, mid, 292);
+
+  const caption = fitOneOrTwo(ctx, spec.caption, {
+    weight: 700,
+    family: BODY,
+    max: 32,
+    twoLineMax: 30,
+    min: 20,
+    maxWidth: CORNER_PX - 56,
+  });
+  ctx.fillStyle = INK_SOFT;
+  drawBlock(ctx, caption.lines, mid, caption.lines.length > 1 ? 364 : 352, caption.size * 1.12);
 }
 
 export function tileTexture(index: number): THREE.CanvasTexture {
-  const key = `tile-${index}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
   const tile = BOARD[index];
   const isCorner =
     tile.kind === 'start' ||
     tile.kind === 'island' ||
     tile.kind === 'championship' ||
     tile.kind === 'worldtour';
-  return finish(isCorner ? drawCornerTile(tile) : drawSideTile(tile), key);
+  return isCorner
+    ? paintTexture(`tile-${index}`, CORNER_PX, CORNER_PX, (ctx) => paintCornerTile(ctx, tile), TILE_SCALE)
+    : paintTexture(`tile-${index}`, SIDE_W, SIDE_H, (ctx) => paintSideTile(ctx, tile), TILE_SCALE);
 }
 
 /** The gold "x3" badge that floats over the championship city. */
 export function championshipBadge(multiplier: number): THREE.CanvasTexture {
-  const key = `badge-${multiplier}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
-  const { canvas, ctx } = makeCanvas(256, 256);
-  const gradient = ctx.createRadialGradient(128, 110, 20, 128, 128, 124);
-  gradient.addColorStop(0, '#fff1b8');
-  gradient.addColorStop(1, '#e9a515');
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(128, 128, 120, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 10;
-  ctx.stroke();
-  ctx.fillStyle = '#5a3a00';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '600 104px Fredoka, Nunito, sans-serif';
-  ctx.fillText(`x${multiplier}`, 128, 136);
-  return finish(canvas, key);
+  return paintTexture(`badge-${multiplier}`, 256, 256, (ctx) => {
+    const gradient = ctx.createRadialGradient(128, 110, 20, 128, 128, 124);
+    gradient.addColorStop(0, '#fff1b8');
+    gradient.addColorStop(1, '#e9a515');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(128, 128, 120, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 10;
+    ctx.stroke();
+    ctx.fillStyle = '#5a3a00';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 104px ${DISPLAY}`;
+    ctx.fillText(`x${multiplier}`, 128, 136);
+  });
 }
 
 /* ------------------------------------------------------------ centre */
 
 export function centerTexture(): THREE.CanvasTexture {
-  const key = 'center';
-  const hit = cache.get(key);
-  if (hit) return hit;
   const size = 1024;
-  const { canvas, ctx } = makeCanvas(size, size);
-
-  // Checkered stone floor.
-  const cells = 8;
-  const cell = size / cells;
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#e7e4de' : '#c9c5bd';
-      ctx.fillRect(x * cell, y * cell, cell, cell);
-      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x * cell + 1.5, y * cell + 1.5, cell - 3, cell - 3);
+  return paintTexture('center', size, size, (ctx) => {
+    // Checkered stone floor.
+    const cells = 8;
+    const cell = size / cells;
+    for (let y = 0; y < cells; y++) {
+      for (let x = 0; x < cells; x++) {
+        ctx.fillStyle = (x + y) % 2 === 0 ? '#e7e4de' : '#c9c5bd';
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x * cell + 1.5, y * cell + 1.5, cell - 3, cell - 3);
+      }
     }
-  }
 
-  // Cream plaque with the wordmark.
-  ctx.fillStyle = 'rgba(30,41,59,0.18)';
-  roundRect(ctx, 166, size / 2 - 150, size - 332, 312, 46);
-  ctx.fill();
-  ctx.fillStyle = '#fffaf0';
-  roundRect(ctx, 160, size / 2 - 160, size - 320, 300, 44);
-  ctx.fill();
-  ctx.strokeStyle = '#e9c27a';
-  ctx.lineWidth = 10;
-  ctx.stroke();
+    // Cream plaque with the wordmark.
+    ctx.fillStyle = 'rgba(30,41,59,0.18)';
+    roundRect(ctx, 166, size / 2 - 150, size - 332, 312, 46);
+    ctx.fill();
+    ctx.fillStyle = '#fffaf0';
+    roundRect(ctx, 160, size / 2 - 160, size - 320, 300, 44);
+    ctx.fill();
+    ctx.strokeStyle = '#e9c27a';
+    ctx.lineWidth = 10;
+    ctx.stroke();
 
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#0ea5e9';
-  ctx.font = 'bold 112px Fredoka, Nunito, sans-serif';
-  ctx.fillText('SKYLINE', size / 2, size / 2 - 66);
-  const gold = ctx.createLinearGradient(0, size / 2, 0, size / 2 + 110);
-  gold.addColorStop(0, '#fbbf24');
-  gold.addColorStop(1, '#ea580c');
-  ctx.fillStyle = gold;
-  ctx.font = 'bold 124px Fredoka, Nunito, sans-serif';
-  ctx.fillText('TYCOON', size / 2, size / 2 + 52);
-
-  return finish(canvas, key);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#0ea5e9';
+    ctx.font = `bold 112px ${DISPLAY}`;
+    ctx.fillText('SKYLINE', size / 2, size / 2 - 66);
+    const gold = ctx.createLinearGradient(0, size / 2, 0, size / 2 + 110);
+    gold.addColorStop(0, '#fbbf24');
+    gold.addColorStop(1, '#ea580c');
+    ctx.fillStyle = gold;
+    ctx.font = `bold 124px ${DISPLAY}`;
+    ctx.fillText('TYCOON', size / 2, size / 2 + 52);
+  });
 }
 
 /* -------------------------------------------------------------- dice */
@@ -478,30 +614,26 @@ const PIPS: Record<number, [number, number][]> = {
 };
 
 export function dieFaceTexture(value: number): THREE.CanvasTexture {
-  const key = `die-${value}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
   const size = 256;
-  const { canvas, ctx } = makeCanvas(size, size);
+  return paintTexture(`die-${value}`, size, size, (ctx) => {
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(1, '#dfe6f5');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(24,33,58,0.12)';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, size - 8, size - 8);
 
-  const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(1, '#dfe6f5');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = 'rgba(24,33,58,0.12)';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(4, 4, size - 8, size - 8);
-
-  const pad = 62;
-  const step = (size - pad * 2) / 2;
-  ctx.fillStyle = '#18213a';
-  for (const [gx, gy] of PIPS[value] ?? []) {
-    ctx.beginPath();
-    ctx.arc(pad + gx * step, pad + gy * step, 24, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  return finish(canvas, key);
+    const pad = 62;
+    const step = (size - pad * 2) / 2;
+    ctx.fillStyle = '#18213a';
+    for (const [gx, gy] of PIPS[value] ?? []) {
+      ctx.beginPath();
+      ctx.arc(pad + gx * step, pad + gy * step, 24, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
 }
 
 /**
@@ -521,6 +653,6 @@ export const DIE_REST_ROTATION: Record<number, [number, number, number]> = {
 };
 
 export function disposeTextures(): void {
-  for (const texture of cache.values()) texture.dispose();
+  for (const entry of cache.values()) entry.texture.dispose();
   cache.clear();
 }

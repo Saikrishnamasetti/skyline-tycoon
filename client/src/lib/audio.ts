@@ -89,8 +89,9 @@ export const sfx = {
     noise(0.42, 0.3);
     tone({ freq: 220, duration: 0.1, type: 'triangle', gain: 0.25, delay: 0.34 });
   },
+  /** A soft wooden tap for each space a piece lands on. */
   step(): void {
-    tone({ freq: 520, duration: 0.05, type: 'square', gain: 0.1 });
+    tone({ freq: 560, duration: 0.07, type: 'triangle', gain: 0.16, slideTo: 380 });
   },
   cashIn(): void {
     tone({ freq: 660, duration: 0.12, type: 'triangle', gain: 0.4 });

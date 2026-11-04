@@ -63,6 +63,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             three: ['three'],
             r3f: ['@react-three/fiber', '@react-three/drei'],
+            motion: ['motion'],
           },
         },
       },

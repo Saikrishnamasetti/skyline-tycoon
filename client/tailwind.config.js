@@ -7,6 +7,11 @@ export default {
       opacity: Object.fromEntries(
         Array.from({ length: 101 }, (_, i) => [i, String(i / 100)]),
       ),
+      // Sizes are rem, and the root size grows on wide screens (index.css),
+      // so text keeps pace with the room the layout has.
+      fontSize: {
+        caption: ['0.8125rem', { lineHeight: '1.15rem' }],
+      },
       fontFamily: {
         display: ['Fredoka', 'Nunito', 'system-ui', 'sans-serif'],
         sans: ['Nunito', 'system-ui', 'Segoe UI', 'sans-serif'],

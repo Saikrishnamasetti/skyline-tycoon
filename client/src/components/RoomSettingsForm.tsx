@@ -14,20 +14,21 @@ export function RoomSettingsForm({ value, onChange, disabled = false }: Props) {
     onChange({ ...value, [key]: next });
 
   return (
-    <fieldset disabled={disabled} className={cx('space-y-4', disabled && 'opacity-60')}>
+    <fieldset disabled={disabled} className={cx('space-y-5', disabled && 'opacity-60')}>
       <div>
         <span className="label">Players</span>
-        <div className="mt-1.5 flex gap-2">
+        <div className="mt-2 flex gap-2">
           {[2, 3, 4].map((count) => (
             <button
               key={count}
               type="button"
               onClick={() => set('maxPlayers', count)}
+              aria-pressed={value.maxPlayers === count}
               className={cx(
-                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition',
+                'option min-h-[2.75rem] flex-1 px-3 py-2 font-display text-lg font-semibold',
                 value.maxPlayers === count
-                  ? 'border-neon-cyan/60 bg-neon-cyan/12 text-neon-cyan'
-                  : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100',
+                  ? 'border-sky-400 bg-sky-50 text-sky-700'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
               )}
             >
               {count}
@@ -67,20 +68,22 @@ export function RoomSettingsForm({ value, onChange, disabled = false }: Props) {
 
       <button
         type="button"
+        role="switch"
+        aria-checked={value.tradingEnabled}
         onClick={() => set('tradingEnabled', !value.tradingEnabled)}
-        className="flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:bg-slate-100"
+        className="option flex w-full items-start gap-3 border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
       >
         <span
           className={cx(
-            'mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition',
-            value.tradingEnabled ? 'bg-neon-cyan/70' : 'bg-slate-300',
+            'mt-0.5 flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition',
+            value.tradingEnabled ? 'bg-sky-500' : 'bg-slate-300',
           )}
         >
-          <span className={cx('h-4 w-4 rounded-full bg-white transition-transform', value.tradingEnabled && 'translate-x-4')} />
+          <span className={cx('h-5 w-5 rounded-full bg-white shadow transition-transform', value.tradingEnabled && 'translate-x-5')} />
         </span>
         <span className="min-w-0">
-          <span className="block text-[13px] font-semibold text-slate-900">Allow trading (house rule)</span>
-          <span className="block text-[11px] leading-snug text-slate-500">
+          <span className="block text-base font-semibold text-slate-900">Allow trading (house rule)</span>
+          <span className="block text-sm leading-snug text-slate-500">
             Off in the classic game. When on, players can swap cash and cities before they roll.
           </span>
         </span>
@@ -106,11 +109,11 @@ function Slider({
     <div>
       <div className="flex items-center justify-between">
         <span className="label">{label}</span>
-        <span className="font-mono text-[12px] text-slate-800">{display}</span>
+        <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-sm font-bold text-slate-800">{display}</span>
       </div>
       <input
         type="range"
-        className="mt-1.5 w-full accent-[#4fd6ff]"
+        className="mt-2 h-2 w-full cursor-pointer accent-sky-500"
         min={bounds.min}
         max={bounds.max}
         step={bounds.step}
