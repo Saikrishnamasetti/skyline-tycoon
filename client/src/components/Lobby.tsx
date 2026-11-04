@@ -3,7 +3,7 @@ import { PLAYER_COLORS, TOKEN_SHAPES } from '@shared';
 import type { GameSettings, GameState, Identity, Player } from '@shared';
 import { cx, copyText } from '../lib/format';
 import { api } from '../net/socket';
-import { LOCAL_MODE } from '../net/mode';
+import { useNetMode } from '../net/mode';
 import { useGame } from '../store/useGame';
 import { Avatar } from '../ui/atoms';
 import { IdentityPicker } from './IdentityPicker';
@@ -124,6 +124,7 @@ function ShareCard({ state }: { state: GameState }) {
 export function Lobby({ state, me, onLeave }: LobbyProps) {
   const [rules, setRules] = useState(false);
   const isHost = !!me && me.id === state.hostId;
+  const solo = useNetMode() === 'solo';
 
   const identity: Identity = {
     name: me?.name ?? '',
@@ -161,11 +162,11 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
         <div className="space-y-4">
-          {LOCAL_MODE ? (
+          {solo ? (
             <div className="panel p-5">
-              <span className="label">Playing on this device</span>
+              <span className="label">Solo game on this device</span>
               <p className="mt-2 text-base leading-relaxed text-slate-600">
-                This edition runs in your browser, so your rivals are bots. Add one to three of
+                This game runs in your browser, so your rivals are bots. Add one to three of
                 them below, then start the game. A refresh mid-game picks up where you left off.
               </p>
             </div>
@@ -185,7 +186,7 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
                 >
                   <span className="h-12 w-12 rounded-xl border-2 border-dashed border-slate-200" />
                   <span className="flex-1">
-                    {LOCAL_MODE ? 'Empty seat' : 'Waiting for another tycoon'}
+                    {solo ? 'Empty seat' : 'Waiting for another tycoon'}
                   </span>
                   {isHost && i === 0 && (
                     <button type="button" className="btn-ghost btn-sm" onClick={() => void api.addBot()}>
@@ -234,7 +235,7 @@ export function Lobby({ state, me, onLeave }: LobbyProps) {
             <>
               <span className="flex-1 text-base text-slate-600">
                 {state.players.length < 2
-                  ? LOCAL_MODE
+                  ? solo
                     ? 'Add at least one bot to start.'
                     : 'You need at least one more player.'
                   : everyoneReady

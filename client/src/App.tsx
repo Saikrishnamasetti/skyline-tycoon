@@ -17,7 +17,8 @@ export default function App() {
       <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/room/:code" element={<Room />} />
+          <Route path="/room/:code" element={<Room key="online" mode="online" />} />
+          <Route path="/solo/:code" element={<Room key="solo" mode="solo" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toasts />

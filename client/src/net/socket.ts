@@ -9,7 +9,7 @@ import type {
   ServerToClientEvents,
 } from '@shared';
 
-import { LOCAL_MODE } from './mode';
+import { getNetMode, type NetMode } from './mode';
 import { connectLocal, localRoomSummary } from './local/localServer';
 
 export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -18,22 +18,26 @@ const SERVER_URL: string =
   (import.meta.env.VITE_SERVER_URL as string | undefined)?.trim() ||
   (typeof window !== 'undefined' ? window.location.origin : '');
 
-let socket: GameSocket | null = null;
+const sockets: Partial<Record<NetMode, GameSocket>> = {};
 
+/** The socket for the current mode (see net/mode), created on first use. */
 export function getSocket(): GameSocket {
-  if (!socket && LOCAL_MODE) {
-    // Static build: the game server runs in this page (see local/localServer).
-    socket = connectLocal() as unknown as GameSocket;
-  }
+  const mode = getNetMode();
+  let socket = sockets[mode];
   if (!socket) {
-    socket = io(SERVER_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 600,
-      reconnectionDelayMax: 4000,
-      reconnectionAttempts: Infinity,
-      timeout: 12000,
-    });
+    socket =
+      mode === 'solo'
+        ? // The game server runs in this page (see local/localServer).
+          (connectLocal() as unknown as GameSocket)
+        : io(SERVER_URL, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 600,
+            reconnectionDelayMax: 4000,
+            reconnectionAttempts: Infinity,
+            timeout: 12000,
+          });
+    sockets[mode] = socket;
   }
   return socket;
 }
@@ -48,9 +52,18 @@ function request<T>(event: keyof ClientToServerEvents, ...args: unknown[]): Prom
       settled = true;
       resolve(res);
     };
+    // socket.io queues the message until it connects. A sleeping free host
+    // can take most of a minute to start, so wait longer in that case.
+    const waking = !active.connected;
     const timer = window.setTimeout(
-      () => done({ ok: false, error: 'The server did not respond. Check your connection.' }),
-      12000,
+      () =>
+        done({
+          ok: false,
+          error: waking
+            ? 'The game server did not wake up in time. Try again, or play solo.'
+            : 'The server did not respond. Check your connection.',
+        }),
+      waking ? 90000 : 12000,
     );
     const ack = (res: Ack<T>) => {
       window.clearTimeout(timer);
@@ -86,7 +99,7 @@ export async function peekRoom(code: string): Promise<{
   players?: number;
   max?: number;
 }> {
-  if (LOCAL_MODE) return localRoomSummary(code.toUpperCase());
+  if (getNetMode() === 'solo') return localRoomSummary(code.toUpperCase());
   try {
     const base = SERVER_URL || '';
     const res = await fetch(`${base}/api/rooms/${encodeURIComponent(code.toUpperCase())}`);
@@ -104,7 +117,9 @@ interface StoredSeat {
   sessionToken: string;
 }
 
-const seatKey = (code: string) => `skyline.seat.${code.toUpperCase()}`;
+// Solo and online rooms come from different servers, so keep their seats apart.
+const seatKey = (code: string) =>
+  `skyline.${getNetMode() === 'solo' ? 'solo.' : ''}seat.${code.toUpperCase()}`;
 
 export function rememberSeat(code: string, seat: StoredSeat): void {
   try {

@@ -6,20 +6,21 @@ import { GameTable } from '../components/GameTable';
 import { IdentityPicker } from '../components/IdentityPicker';
 import { ConnectionBadge } from '../components/ConnectionBadge';
 import { api, forgetSeat, loadProfile, recallSeat, rememberSeat, saveProfile } from '../net/socket';
-import { LOCAL_MODE } from '../net/mode';
-
-/** In the single-device build nobody else can be in a room you never sat at. */
-const LOCAL_GONE = 'That game is not saved on this device any more.';
+import { getNetMode, setNetMode, type NetMode } from '../net/mode';
 import { primeAudio } from '../lib/audio';
 import { useGame } from '../store/useGame';
 
 type Stage = 'resolving' | 'need-identity' | 'seated' | 'gone';
 
+/** Nobody else can be at a solo table, so there is no seat to join. */
+const SOLO_GONE = 'That solo game is not saved on this device any more.';
+
 /**
  * Owns the join / rejoin handshake for a room URL. A refresh finds the stored
  * session token and reclaims the same seat rather than creating a new player.
+ * `/room/CODE` is an online room, `/solo/CODE` a game in this browser.
  */
-export function Room() {
+export function Room({ mode }: { mode: NetMode }) {
   const params = useParams<{ code: string }>();
   const code = (params.code ?? '').toUpperCase();
   const navigate = useNavigate();
@@ -45,6 +46,9 @@ export function Room() {
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
+    // A build without that kind of server keeps its own (old solo-only links).
+    setNetMode(mode);
+    const solo = getNetMode() === 'solo';
 
     if (!/^[A-Z0-9]{6}$/.test(code)) {
       setError('That room code does not look right.');
@@ -58,8 +62,8 @@ export function Room() {
     }
     const seat = recallSeat(code);
     if (!seat) {
-      if (LOCAL_MODE) {
-        setError(LOCAL_GONE);
+      if (solo) {
+        setError(SOLO_GONE);
         setStage('gone');
       } else {
         setStage('need-identity');
@@ -73,15 +77,15 @@ export function Room() {
         setStage('seated');
       } else {
         forgetSeat(code);
-        if (LOCAL_MODE) {
-          setError(LOCAL_GONE);
+        if (solo) {
+          setError(SOLO_GONE);
           setStage('gone');
         } else {
           setStage('need-identity');
         }
       }
     });
-  }, [code, playerId, state?.roomCode, applyState, setSeat]);
+  }, [code, mode, playerId, state?.roomCode, applyState, setSeat]);
 
   const join = async () => {
     primeAudio();

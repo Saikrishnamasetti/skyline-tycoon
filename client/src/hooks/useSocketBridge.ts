@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { getSocket, recallSeat, api, forgetSeat } from '../net/socket';
+import { useNetMode } from '../net/mode';
 import { useGame } from '../store/useGame';
 
 /**
- * Wires the socket to the store exactly once. Reconnections automatically
+ * Wires the active socket to the store, and rewires it when the player
+ * switches between an online and a solo game. Reconnections automatically
  * reclaim the player's seat with the stored session token, which is what
  * stops a browser refresh from creating a second player.
  */
 export function useSocketBridge(): void {
+  const mode = useNetMode();
   useEffect(() => {
     const socket = getSocket();
     const store = useGame.getState();
@@ -51,5 +54,5 @@ export function useSocketBridge(): void {
       socket.off('events', onEvents);
       socket.off('kicked', onKicked);
     };
-  }, []);
+  }, [mode]);
 }

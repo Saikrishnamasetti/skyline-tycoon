@@ -1,6 +1,6 @@
 import { cx } from '../lib/format';
 import { useGame } from '../store/useGame';
-import { LOCAL_MODE } from '../net/mode';
+import { useNetMode } from '../net/mode';
 
 const LABEL = {
   idle: 'Connecting',
@@ -11,7 +11,8 @@ const LABEL = {
 
 export function ConnectionBadge({ className }: { className?: string }) {
   const status = useGame((s) => s.status);
-  if (LOCAL_MODE) {
+  const mode = useNetMode();
+  if (mode === 'solo') {
     return (
       <span
         className={cx('chip border-emerald-300 bg-emerald-50 text-emerald-800', className)}

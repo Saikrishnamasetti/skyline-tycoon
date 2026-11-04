@@ -10,12 +10,16 @@ import { ConnectionBadge } from '../components/ConnectionBadge';
 import { RoomSettingsForm } from '../components/RoomSettingsForm';
 import { HowToPlay } from '../components/HowToPlay';
 import { Modal } from '../ui/atoms';
+import { cx } from '../lib/format';
 import { api, loadProfile, rememberSeat, saveProfile } from '../net/socket';
-import { LOCAL_MODE } from '../net/mode';
+import { getNetMode, ONLINE_AVAILABLE, SOLO_AVAILABLE, setNetMode } from '../net/mode';
 import { primeAudio } from '../lib/audio';
 import { useGame } from '../store/useGame';
 
-type Dialog = 'none' | 'create' | 'join' | 'rules';
+type Dialog = 'none' | 'create' | 'solo' | 'join' | 'rules';
+
+/** Static builds that also reach a hosted server offer both kinds of game. */
+const BOTH = ONLINE_AVAILABLE && SOLO_AVAILABLE;
 
 /** The hero arrives line by line. */
 const hero: Variants = {
@@ -33,6 +37,7 @@ export function Landing() {
   const setSeat = useGame((s) => s.setSeat);
   const setProfile = useGame((s) => s.setProfile);
   const pushToast = useGame((s) => s.pushToast);
+  const status = useGame((s) => s.status);
 
   const [dialog, setDialog] = useState<Dialog>('none');
   const [identity, setIdentity] = useState<Identity>(() => loadProfile());
@@ -43,19 +48,23 @@ export function Landing() {
   useEffect(() => {
     // Leaving a table should not keep its state around behind the scenes.
     useGame.getState().clearRoom();
+    // Connect to the online server right away: a sleeping free host starts
+    // waking up while the player is still reading this page.
+    setNetMode('online');
   }, []);
 
-  const enter = async (kind: 'create' | 'join') => {
+  const enter = async (kind: 'create' | 'solo' | 'join') => {
     primeAudio();
     setBusy(true);
     const profile: Identity = { ...identity, name: identity.name.trim() || 'Tycoon' };
     saveProfile(profile);
     setProfile(profile);
+    setNetMode(kind === 'solo' ? 'solo' : 'online');
 
     const res =
-      kind === 'create'
-        ? await api.createRoom(profile, settings)
-        : await api.joinRoom(code.trim().toUpperCase(), profile);
+      kind === 'join'
+        ? await api.joinRoom(code.trim().toUpperCase(), profile)
+        : await api.createRoom(profile, settings);
     setBusy(false);
 
     if (!res.ok || !res.data) {
@@ -68,8 +77,16 @@ export function Landing() {
     });
     setSeat(res.data.roomCode, res.data.playerId);
     applyState(res.data.state);
-    navigate(`/room/${res.data.roomCode}`);
+    navigate(`/${getNetMode() === 'solo' ? 'solo' : 'room'}/${res.data.roomCode}`);
   };
+
+  const openSetup = (kind: 'create' | 'solo') => {
+    setSettings({ ...DEFAULT_SETTINGS });
+    setDialog(kind);
+  };
+  const waking = ONLINE_AVAILABLE && status !== 'online';
+  const busyLabel = (idle: string, working: string) =>
+    !busy ? idle : dialog !== 'solo' && waking ? 'Waking the server...' : working;
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -99,9 +116,9 @@ export function Landing() {
         <main className="flex flex-1 flex-col justify-center py-10">
           <motion.div className="max-w-3xl" variants={hero} initial="hidden" animate="show">
             <motion.span variants={rise} className="chip inline-flex border-sky-200 bg-white/80 text-sm text-sky-700">
-              {LOCAL_MODE
-                ? '3D board game: you against up to three bots'
-                : 'Real-time 3D board game for 2 to 4 players'}
+              {ONLINE_AVAILABLE
+                ? 'Real-time 3D board game for 2 to 4 players'
+                : '3D board game: you against up to three bots'}
             </motion.span>
             <motion.h1
               variants={rise}
@@ -119,33 +136,50 @@ export function Landing() {
             >
               Claim cities around the world, build them up, buy your rivals out and race for a side,
               triple or resort monopoly.{' '}
-              {LOCAL_MODE
-                ? 'This edition runs entirely in your browser: pick your bots and play.'
-                : 'Private rooms, bots to fill empty seats, and a server that referees every roll.'}
+              {BOTH
+                ? 'Invite friends to a private online room, or play solo against bots right here in your browser.'
+                : SOLO_AVAILABLE
+                  ? 'This edition runs entirely in your browser: pick your bots and play.'
+                  : 'Private rooms, bots to fill empty seats, and a server that referees every roll.'}
             </motion.p>
 
             <motion.div variants={rise} className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="btn-primary px-8 py-3.5 text-xl"
-                disabled={busy}
-                onClick={() => {
-                  setSettings({ ...DEFAULT_SETTINGS });
-                  setDialog('create');
-                }}
-              >
-                Play now
-              </button>
-              {!LOCAL_MODE && (
+              {ONLINE_AVAILABLE ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary px-8 py-3.5 text-xl"
+                    disabled={busy}
+                    onClick={() => openSetup('create')}
+                  >
+                    {BOTH ? 'Play online' : 'Play now'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-8 py-3.5 text-xl"
+                    onClick={() => setDialog('join')}
+                  >
+                    Join with a code
+                  </button>
+                </>
+              ) : null}
+              {SOLO_AVAILABLE && (
                 <button
                   type="button"
-                  className="btn-ghost px-8 py-3.5 text-xl"
-                  onClick={() => setDialog('join')}
+                  className={cx(BOTH ? 'btn-ghost' : 'btn-primary', 'px-8 py-3.5 text-xl')}
+                  disabled={busy}
+                  onClick={() => openSetup('solo')}
                 >
-                  Join with a code
+                  {BOTH ? 'Play solo vs bots' : 'Play now'}
                 </button>
               )}
             </motion.div>
+            {BOTH && waking && (
+              <motion.p variants={rise} className="mt-4 max-w-2xl text-base text-slate-600">
+                Waking the online server. Free hosting sleeps when nobody is playing, so this can
+                take up to a minute. Solo games start right away.
+              </motion.p>
+            )}
 
             <motion.dl variants={rise} className="mt-12 grid max-w-2xl grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
               {[
@@ -166,17 +200,17 @@ export function Landing() {
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-300/70 pt-4 text-sm text-slate-600">
           <span>An original property trading game. Every graphic is drawn in your browser.</span>
           <span>
-            {LOCAL_MODE
-              ? 'No server needed: the referee runs in this tab.'
-              : 'Server-authoritative dice, money and deeds.'}
+            {ONLINE_AVAILABLE
+              ? 'Server-authoritative dice, money and deeds.'
+              : 'No server needed: the referee runs in this tab.'}
           </span>
         </footer>
       </div>
 
       <Modal
-        open={dialog === 'create'}
+        open={dialog === 'create' || dialog === 'solo'}
         onClose={() => setDialog('none')}
-        title={LOCAL_MODE ? 'Set up your game' : 'Create a private room'}
+        title={dialog === 'solo' ? 'Set up a solo game' : 'Create a private room'}
         footer={
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-ghost" onClick={() => setDialog('none')}>
@@ -186,9 +220,9 @@ export function Landing() {
               type="button"
               className="btn-primary"
               disabled={busy}
-              onClick={() => void enter('create')}
+              onClick={() => void enter(dialog === 'solo' ? 'solo' : 'create')}
             >
-              {busy ? 'Creating...' : LOCAL_MODE ? 'Continue' : 'Create room'}
+              {busyLabel(dialog === 'solo' ? 'Continue' : 'Create room', 'Creating...')}
             </button>
           </div>
         }
@@ -214,7 +248,7 @@ export function Landing() {
               disabled={busy || code.trim().length !== 6}
               onClick={() => void enter('join')}
             >
-              {busy ? 'Joining...' : 'Join room'}
+              {busyLabel('Join room', 'Joining...')}
             </button>
           </div>
         }

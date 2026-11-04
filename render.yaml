@@ -1,0 +1,24 @@
+# Render Blueprint for the online game server.
+#
+# One free web service runs the Node + Socket.IO server, which also serves its
+# own copy of the client. The GitHub Pages site connects to it for online
+# rooms (see VITE_SERVER_URL in .github/workflows/deploy-pages.yml).
+#
+# Free instances sleep after 15 idle minutes and take up to a minute to wake;
+# rooms live in memory, so a game in progress is lost if the service restarts.
+services:
+  - type: web
+    name: skyline-tycoon
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev --no-audit --no-fund && npm run build
+    startCommand: node server/dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Browser origins allowed to connect (the Pages site). Comma separated.
+      - key: CLIENT_ORIGIN
+        value: https://saikrishnamasetti.github.io
+      - key: ROOM_TTL_MINUTES
+        value: "45"
