@@ -1,5 +1,6 @@
-# Builds the static, single-device edition of the game (the game server runs
-# in the browser) and publishes it to GitHub Pages on every push to main.
+# Builds the static client and publishes it to GitHub Pages on every push to
+# main. It plays online through the Render server (render.yaml) and solo with
+# a copy of the game server that runs in the browser.
 name: Deploy to GitHub Pages
 
 on:
@@ -32,6 +33,8 @@ jobs:
       - name: Build the static client
         env:
           VITE_LOCAL_MODE: 'true'
+          # The online game server. Its CLIENT_ORIGIN must allow this site.
+          VITE_SERVER_URL: https://skyline-tycoon.onrender.com
         run: npm run build -w client -- --base=/${{ github.event.repository.name }}/
 
       # GitHub Pages has no SPA rewrites; serving the app as the 404 page

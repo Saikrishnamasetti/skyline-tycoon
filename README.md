@@ -21,11 +21,13 @@ original game, and its name, logo, characters and art are not used.
 
 **Play it now:** <https://saikrishnamasetti.github.io/skyline-tycoon/>
 
-The GitHub Pages site is the single-device edition: there is no Node server
-on Pages, so the real server modules (rooms, rules engine, bots) are bundled
-into the page and the game runs entirely in your browser, you against up to
-three bots. A refresh mid-game resumes it. Online multiplayer needs the Node
-server below.
+- **Play online** creates a private room on the game server hosted on Render
+  (<https://skyline-tycoon.onrender.com>, which also serves its own copy of
+  the game). Share the code or invite link with friends. The free server
+  sleeps when idle, so the first visit can take up to a minute to connect.
+- **Play solo vs bots** needs no server: the real server modules (rooms,
+  rules engine, bots) are bundled into the page and run in your browser. A
+  refresh mid-game resumes it.
 
 ---
 
@@ -238,12 +240,22 @@ docker run -p 4000:4000 -v skyline-data:/data skyline-tycoon
 `client/dist` with an SPA rewrite for `/room/*`, and run the server with
 `CLIENT_ORIGIN` set to the client's origin.
 
-**GitHub Pages (single-device edition):** every push to `main` runs
+**GitHub Pages + Render:** every push to `main` runs
 `.github/workflows/deploy-pages.yml`, which builds the client with
-`VITE_LOCAL_MODE=true` and `--base=/<repo>/`, copies `index.html` to
-`404.html` so deep links survive a refresh, and publishes `client/dist`.
-In the repository settings, set **Pages → Source** to **GitHub Actions**.
-To try the same build locally:
+`VITE_LOCAL_MODE=true` (solo games in the browser),
+`VITE_SERVER_URL=https://skyline-tycoon.onrender.com` (online rooms) and
+`--base=/<repo>/`, copies `index.html` to `404.html` so deep links survive a
+refresh, and publishes `client/dist`. In the repository settings, set
+**Pages → Source** to **GitHub Actions**.
+
+The server is a free Render web service described by `render.yaml`
+(Render → New → Blueprint → this repository). Its `CLIENT_ORIGIN` must list
+the Pages origin. Free instances sleep after 15 idle minutes and keep rooms
+in memory only. The service was created from the public repository URL, so
+server changes need **Manual Deploy** in Render, or connect GitHub in Render
+for automatic deploys.
+
+To try the static build locally (solo only, or add `VITE_SERVER_URL`):
 
 ```bash
 VITE_LOCAL_MODE=true npm run dev -w client
